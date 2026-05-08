@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HAAS | Hospital Admission Avoidance System</title>
+    <meta name="description" content="NHS Hospital Admission Avoidance System - MCDA-powered clinical decision support for CETR-compliant care routing.">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏥</text></svg>" type="image/svg+xml">
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Leaflet CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'nhs': {
+                            'blue': '#005EB8',
+                            'dark': '#003087',
+                            'light': '#41B6E6',
+                            'aqua': '#00A9CE',
+                        }
+                    },
+                    fontFamily: {
+                        'sans': ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.4s ease-out',
+                        'slide-up': 'slideUp 0.5s ease-out',
+                        'slide-in-right': 'slideInRight 0.4s ease-out',
+                        'pulse-soft': 'pulseSoft 2s ease-in-out infinite',
+                        'shimmer': 'shimmer 2s linear infinite',
+                    },
+                    keyframes: {
+                        fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+                        slideUp: { '0%': { opacity: '0', transform: 'translateY(20px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+                        slideInRight: { '0%': { opacity: '0', transform: 'translateX(30px)' }, '100%': { opacity: '1', transform: 'translateX(0)' } },
+                        pulseSoft: { '0%, 100%': { opacity: '1' }, '50%': { opacity: '0.7' } },
+                        shimmer: { '0%': { backgroundPosition: '-200% 0' }, '100%': { backgroundPosition: '200% 0' } },
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800&display=swap');
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            min-height: 100vh;
+        }
+
+        /* Glassmorphism Base */
+        .glass {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .glass-card:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 20px 60px -10px rgba(0, 0, 0, 0.4);
+        }
+        .glass-sidebar {
+            background: rgba(0, 48, 135, 0.85);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Premium Gradients */
+        .gradient-blue { background: linear-gradient(135deg, #005EB8, #00A9CE); }
+        .gradient-indigo { background: linear-gradient(135deg, #4F46E5, #7C3AED); }
+        .gradient-emerald { background: linear-gradient(135deg, #059669, #10B981); }
+        .gradient-amber { background: linear-gradient(135deg, #D97706, #F59E0B); }
+        .gradient-rose { background: linear-gradient(135deg, #E11D48, #F43F5E); }
+
+        /* Stat Card Glow Effect */
+        .stat-glow-blue { box-shadow: 0 0 30px -5px rgba(0, 94, 184, 0.3); }
+        .stat-glow-purple { box-shadow: 0 0 30px -5px rgba(124, 58, 237, 0.3); }
+        .stat-glow-green { box-shadow: 0 0 30px -5px rgba(16, 185, 129, 0.3); }
+        .stat-glow-cyan { box-shadow: 0 0 30px -5px rgba(0, 169, 206, 0.3); }
+
+        /* Map container */
+        #hospital-map { height: 100%; width: 100%; border-radius: 0.75rem; }
+
+        /* Custom scrollbar (dark theme) */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.35); }
+
+        /* Table styling */
+        .premium-table th { border-bottom: 2px solid rgba(255,255,255,0.1); }
+        .premium-table tr:hover { background: rgba(255,255,255,0.04); }
+
+        /* Sidebar hover */
+        .sidebar-btn { transition: all 0.2s ease; }
+        .sidebar-btn:hover { background: rgba(255,255,255,0.1); }
+        .sidebar-btn.active {
+            background: rgba(255,255,255,0.15);
+            border-left: 3px solid #41B6E6;
+        }
+        /* Tutorial Panel */
+        .tutorial-panel {
+            background: rgba(0, 30, 80, 0.95);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border-left: 1px solid rgba(65, 182, 230, 0.3);
+            box-shadow: -20px 0 60px rgba(0, 0, 0, 0.5);
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .tutorial-panel.closed { transform: translateX(100%); }
+        .tutorial-panel.open { transform: translateX(0); }
+        .tutorial-step-indicator {
+            width: 28px; height: 28px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 12px; font-weight: 700;
+            transition: all 0.3s ease;
+        }
+        .tutorial-step-indicator.active {
+            background: linear-gradient(135deg, #005EB8, #00A9CE);
+            color: white;
+            box-shadow: 0 0 20px rgba(0, 169, 206, 0.5);
+        }
+        .tutorial-step-indicator.completed {
+            background: linear-gradient(135deg, #059669, #10B981);
+            color: white;
+        }
+        .tutorial-step-indicator.pending {
+            background: rgba(255, 255, 255, 0.08);
+            color: rgba(255, 255, 255, 0.3);
+        }
+        .tutorial-highlight-pulse {
+            animation: tutorialPulse 2s ease-in-out infinite;
+        }
+        @keyframes tutorialPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(65, 182, 230, 0.4); }
+            50% { box-shadow: 0 0 0 8px rgba(65, 182, 230, 0); }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+    // prettier-ignore
+    {% raw %}
+        const { useState, useEffect, useRef } = React;
+
+        function App() {
+            const [isAuthenticated, setIsAuthenticated] = useState(false);
+            const [loginError, setLoginError] = useState('');
+            const [page, setPage] = useState('dashboard');
+            const [stats, setStats] = useState(null);
+            const [hospitals, setHospitals] = useState([]);
+            const [mapData, setMapData] = useState(null);
+            const [auditLog, setAuditLog] = useState([]);
+            const [patientRegistry, setPatientRegistry] = useState([]);
+
+            const [showGatekeeperModal, setShowGatekeeperModal] = useState(false);
+            const [showRiskModal, setShowRiskModal] = useState(false);
+            const [tutorialStep, setTutorialStep] = useState(0); // 0 = closed
+
+            const [patient, setPatient] = useState({
+                age: 15, diagnosis: 'autism', has_mental_illness: false,
+                previous_admissions: 0, challenging_behaviour: false,
+                community_support: true, family_coping: true,
+                school_attendance: true, medication_compliance: true
+            });
+
+            const [gatekeeperResult, setGatekeeperResult] = useState(null);
+            const [riskResult, setRiskResult] = useState(null);
+            const [isLoading, setIsLoading] = useState(false);
+            const [isSubmitting, setIsSubmitting] = useState(false);
+            const [toastMsg, setToastMsg] = useState(null);
+            const [searchQuery, setSearchQuery] = useState('');
+
+            // ═══ TUTORIAL CONTENT ═══
+            const tutorialSteps = [
+                {
+                    title: 'Welcome to HAAS',
+                    icon: 'fa-graduation-cap',
+                    color: 'from-blue-500 to-cyan-500',
+                    content: 'Welcome to the Hospital Admission Avoidance System Interactive Tutorial. This guided tour will walk you through every feature of the system, step by step.',
+                    detail: 'HAAS is a clinical decision-support platform built to enforce NHS CETR (Care, Education and Treatment Review) guidelines. It prevents inappropriate hospital admissions for individuals with autism or learning disabilities who do not have an active, treatable mental illness.',
+                    action: 'Click "Next" to begin exploring the Dashboard.'
+                },
+                {
+                    title: 'The Command Centre Dashboard',
+                    icon: 'fa-gauge-high',
+                    color: 'from-indigo-500 to-purple-500',
+                    content: 'The Dashboard provides a real-time national intelligence overview of the entire NHS mental health bed network.',
+                    detail: 'The four stat cards at the top show:\n\n• Total Hospitals — The number of facilities in the HAAS network\n• Child/Adolescent Units — Specialist CAMHS facilities for under-16s\n• Community Services — Alternative care providers with available capacity\n• Available Beds — Total open beds across all regions\n\nThe doughnut chart displays national bed capacity utilisation. The two Clinical Decision Support tools (Risk Predictor and MCDA Gatekeeper) are your primary assessment instruments.',
+                    action: 'Navigate to the "Resource Map" in the sidebar to continue.'
+                },
+                {
+                    title: 'Geospatial Resource Map',
+                    icon: 'fa-map-location-dot',
+                    color: 'from-emerald-500 to-teal-500',
+                    content: 'The interactive Leaflet.js map plots every hospital and community service across England using real GPS coordinates.',
+                    detail: '• Blue markers = Hospital facilities (with CQC rating and bed count)\n• Green markers = Community services (crisis teams, outreach, respite)\n\nClick any marker to see detailed information. This view helps NHS commissioners identify regional capacity shortages at a glance.',
+                    action: 'Now let\'s test the core feature. Click "Next" for Scenario A.'
+                },
+                {
+                    title: 'Scenario A: The CETR Gatekeeper',
+                    icon: 'fa-shield-halved',
+                    color: 'from-rose-500 to-red-500',
+                    content: 'TEST: Prove the system blocks illegal admissions.\n\nThis demonstrates the Deterministic CETR Policy Engine — the core innovation of HAAS.',
+                    detail: 'Return to the Dashboard and click "Start Gatekeeper Review". Enter these EXACT values:\n\n1️⃣  Patient Age: 14\n2️⃣  Primary Diagnosis: Autism Spectrum Disorder\n3️⃣  Mental Illness Checkbox: LEAVE UNCHECKED ❌\n4️⃣  Click "Execute MCDA Algorithm"\n\nExpected result: The system will display a RED "ADMISSION BLOCKED BY CETR" alert. It will list community care alternatives instead of hospital beds.',
+                    action: 'Try it now! Enter the values above, then click "Next" to understand the result.'
+                },
+                {
+                    title: 'Understanding the CETR Block',
+                    icon: 'fa-ban',
+                    color: 'from-rose-600 to-pink-500',
+                    content: 'The system just enforced NHS CETR §4.2: "ASD/LD alone is NOT a legal justification for psychiatric detention."',
+                    detail: 'What happened behind the scenes:\n\n1. The Deterministic Policy Engine checked: Is diagnosis ASD/LD? YES\n2. Is there an active, treatable mental illness? NO\n3. Is patient under 16? YES\n4. Decision: HARD STOP — Hospital admission is INAPPROPRIATE\n\nThe system then queries the community_services database to find age-appropriate, available alternatives such as Crisis Resolution Teams, Intensive Support Teams, and Autism Diagnostic Services.\n\nThe "Download Clinical Justification" button generates a formal NHS-formatted PDF documenting the decision for audit compliance.',
+                    action: 'Click "Start Over" in the modal and proceed to Scenario B.'
+                },
+                {
+                    title: 'Scenario B: MCDA Hospital Matching',
+                    icon: 'fa-building',
+                    color: 'from-emerald-500 to-green-500',
+                    content: 'TEST: Prove the system finds the BEST hospital when admission IS justified.',
+                    detail: 'In the Gatekeeper modal, enter these values:\n\n1️⃣  Patient Age: 35\n2️⃣  Primary Diagnosis: Schizophrenia\n3️⃣  Mental Illness Checkbox: CHECK IT ✅\n4️⃣  Click "Execute MCDA Algorithm"\n\nExpected result: The system will show a GREEN "ADMISSION CONDITIONALLY APPROVED" banner and a ranked list of the safest hospitals, scored by the MCDA algorithm.',
+                    action: 'Try it now! Then click "Next" to understand the MCDA scoring.'
+                },
+                {
+                    title: 'Understanding the MCDA Score',
+                    icon: 'fa-calculator',
+                    color: 'from-blue-500 to-indigo-500',
+                    content: 'The Multi-Criteria Decision Analysis engine scored each hospital using a Weighted Sum Model (WSM) across three pillars:',
+                    detail: '📊 MCDA Scoring Breakdown (Total: 100 points)\n\n• Pillar 1 — CQC Quality Rating (45%): Outstanding = 45pts, Good = 30pts\n• Pillar 2 — Specialist Capabilities (35%): Autism Accreditation (+15), LD Ward (+10), SALT/Sensory/OT/Psychology (+2.5 each)\n• Pillar 3 — Geographic Proximity (20%): <10km = 20pts, <25km = 15pts, <50km = 10pts\n\nThis ensures patients go to the BEST hospital, not just the closest one. The breakdown tags (visible under each hospital card) show exactly how each score was calculated — achieving full clinical transparency.\n\n🎓 You have completed the HAAS Interactive Tutorial!',
+                    action: 'You can revisit any step using the indicators above. Close this panel when ready.'
+                }
+            ];
+
+            const showToast = (msg, type = 'error') => {
+                setToastMsg({ msg, type });
+                setTimeout(() => setToastMsg(null), 4000);
+            };
+
+            // Fetch Stats
+            useEffect(() => {
+                fetch('/api/stats')
+                    .then(res => { if (!res.ok) throw new Error('Stats API failed'); return res.json(); })
+                    .then(data => setStats(data))
+                    .catch(err => { console.error('Stats error:', err); showToast('Failed to load dashboard statistics. Please refresh.'); });
+            }, []);
+
+            // Fetch Data based on page
+            useEffect(() => {
+                if (page === 'hospitals') {
+                    setIsLoading(true);
+                    fetch('/api/hospitals')
+                        .then(res => res.json())
+                        .then(data => { setHospitals(data); setIsLoading(false); });
+                } else if (page === 'map') {
+                    fetch('/api/map_data')
+                        .then(res => { if (!res.ok) throw new Error('Map API failed'); return res.json(); })
+                        .then(data => setMapData(data))
+                        .catch(err => { console.error('Map error:', err); showToast('Failed to load map data. Please refresh.'); });
+                } else if (page === 'audit') {
+                    setIsLoading(true);
+                    fetch('/api/audit_log?limit=50')
+                        .then(res => res.json())
+                        .then(data => { setAuditLog(data.decisions || []); setIsLoading(false); });
+                } else if (page === 'patients') {
+                    setIsLoading(true);
+                    fetch('/api/audit_log?limit=100')
+                        .then(res => res.json())
+                        .then(data => {
+                            // Build patient registry from audit log (pseudonymised)
+                            const patients = (data.decisions || []).reduce((acc, d) => {
+                                const hash = d.patient_hash?.substring(0, 8) || 'ANON';
+                                if (!acc.find(p => p.hash === hash)) {
+                                    acc.push({
+                                        hash,
+                                        age: d.patient_age,
+                                        diagnosis: d.diagnosis,
+                                        lastDecision: d.decision_type,
+                                        lastTimestamp: d.timestamp,
+                                        facility: d.matched_facility_name || '—',
+                                    });
+                                }
+                                return acc;
+                            }, []);
+                            setPatientRegistry(patients);
+                            setIsLoading(false);
+                        });
+                }
+            }, [page]);
+
+            // Map Setup
+            const mapRef = useRef(null);
+            const mapInstanceRef = useRef(null);
+
+            useEffect(() => {
+                if (page === 'map' && mapData && mapRef.current) {
+                    if (!mapInstanceRef.current) {
+                        mapInstanceRef.current = L.map(mapRef.current).setView([52.3555, -1.1743], 6);
+                        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                            attribution: '&copy; CARTO | OSM contributors'
+                        }).addTo(mapInstanceRef.current);
+                    }
+
+                    mapInstanceRef.current.eachLayer((layer) => {
+                        if (layer instanceof L.Marker) {
+                            mapInstanceRef.current.removeLayer(layer);
+                        }
+                    });
+
+                    // Hospital Markers (Blue glow)
+                    const blueIcon = new L.Icon({
+                        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                        iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+                    });
+
+                    mapData.hospitals.forEach(h => {
+                        if(h.latitude && h.longitude) {
+                            L.marker([h.latitude, h.longitude], {icon: blueIcon})
+                             .addTo(mapInstanceRef.current)
+                             .bindPopup(`<b style="color:#005EB8">${h.name}</b><br>${h.location}<br>CQC: ${h.cqc_rating}<br>Beds: ${h.available_beds}`);
+                        }
+                    });
+
+                    // Community Service Markers (Green)
+                    const greenIcon = new L.Icon({
+                        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                        iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+                    });
+
+                    mapData.communityServices.forEach(c => {
+                        if(c.latitude && c.longitude) {
+                            L.marker([c.latitude, c.longitude], {icon: greenIcon})
+                             .addTo(mapInstanceRef.current)
+                             .bindPopup(`<b style="color:#059669">${c.name}</b><br>${c.service_type}<br>Crisis: ${c.crisis_support ? 'Yes' : 'No'}`);
+                        }
+                    });
+                }
+
+                return () => {
+                    if (page !== 'map' && mapInstanceRef.current) {
+                        mapInstanceRef.current.remove();
+                        mapInstanceRef.current = null;
+                    }
+                };
+            }, [page, mapData]);
+
+            // Chart Setup
+            const chartRef = useRef(null);
+            const chartInstanceRef = useRef(null);
+
+            useEffect(() => {
+                if (page === 'dashboard' && stats && chartRef.current) {
+                    if (chartInstanceRef.current) chartInstanceRef.current.destroy();
+
+                    const ctx = chartRef.current.getContext('2d');
+                    chartInstanceRef.current = new Chart(ctx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['Available Beds', 'Occupied (Est.)'],
+                            datasets: [{
+                                data: [stats.totalAvailableBeds, Math.max(0, (stats.avgBeds * stats.totalHospitals) - stats.totalAvailableBeds)],
+                                backgroundColor: ['#00A9CE', 'rgba(255,255,255,0.08)'],
+                                borderWidth: 0,
+                                borderRadius: 4,
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            cutout: '78%',
+                            plugins: {
+                                legend: {
+                                    position: 'bottom',
+                                    labels: { color: 'rgba(255,255,255,0.6)', font: { size: 11 } }
+                                }
+                            }
+                        }
+                    });
+                }
+            }, [page, stats]);
+
+            const downloadJustification = async () => {
+                if (!gatekeeperResult) return;
+                try {
+                    const response = await fetch('/api/export_justification', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            patientId: 'ANONYMOUS-' + Math.random().toString(36).substring(7),
+                            decision: gatekeeperResult.avoidanceAlert ? 'ADMISSION_BLOCKED' : 'ADMISSION_APPROVED',
+                            reasoning: gatekeeperResult.reasons.join(". "),
+                            hospitalName: gatekeeperResult.suitableHospitals?.[0]?.name || 'Community Treatment Alternative'
+                        }),
+                    });
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `HAAS_Justification_${Date.now()}.pdf`;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                } catch (err) {
+                    console.error("Export failed:", err);
+                }
+            };
+
+            const runGatekeeper = async () => {
+                setIsSubmitting(true);
+                try {
+                    const response = await fetch('/api/check_admission', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(patient)
+                    });
+                    if (!response.ok) throw new Error(`Server error: ${response.status}`);
+                    const data = await response.json();
+                    if (data.error) throw new Error(data.message);
+                    setGatekeeperResult(data);
+                } catch (err) {
+                    showToast(err.message || 'Gatekeeper request failed');
+                } finally {
+                    setIsSubmitting(false);
+                }
+            };
+
+            const runRiskCheck = async () => {
+                setIsSubmitting(true);
+                try {
+                    const response = await fetch('/api/predict_risk', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(patient)
+                    });
+                    if (!response.ok) throw new Error(`Server error: ${response.status}`);
+                    const data = await response.json();
+                    if (data.error) throw new Error(data.message);
+                    setRiskResult(data);
+                } catch (err) {
+                    showToast(err.message || 'Risk prediction failed');
+                } finally {
+                    setIsSubmitting(false);
+                }
+            };
+
+            const handleLogin = (e) => {
+                e.preventDefault();
+                const form = e.target;
+                const email = form.email.value;
+                const password = form.password.value;
+                if (email && password.length >= 6) {
+                    setIsAuthenticated(true);
+                    setLoginError('');
+                    showToast('Successfully authenticated', 'success');
+                } else {
+                    setLoginError('Invalid credentials. Please use your NHS SmartCard or staff email.');
+                }
+            };
+
+            const handleLogout = () => {
+                setIsAuthenticated(false);
+                setPage('dashboard');
+            };
+
+            const pageTitle = {
+                dashboard: 'National Intelligence Dashboard',
+                hospitals: 'Hospital Database & Intelligent Matching',
+                map: 'Geospatial Service Analysis',
+                audit: 'Decision Audit Trail',
+                patients: 'Patient Demographic Registry',
+            };
+
+            // ═══ LOGIN GATE ═══
+            if (!isAuthenticated) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center p-4" style={{background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)'}}>
+                        <div className="glass rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-white/10 animate-slide-up">
+                            <div className="gradient-blue p-8 text-center">
+                                <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                                    <i className="fa-solid fa-hospital-user text-3xl text-white"></i>
+                                </div>
+                                <h1 className="text-2xl font-black text-white font-['Outfit'] tracking-tight">HAAS</h1>
+                                <p className="text-blue-100/70 text-sm mt-1">Hospital Admission Avoidance System</p>
+                                <p className="text-blue-100/40 text-[10px] mt-2 uppercase tracking-widest">NHS England Clinical Decision Support Platform</p>
+                            </div>
+                            <form onSubmit={handleLogin} className="p-6 space-y-4">
+                                <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl text-xs text-amber-300/80">
+                                    <i className="fa-solid fa-shield-halved mr-1"></i>
+                                    <strong>Authorised Access Only.</strong> This system contains sensitive clinical decision-support data. Unauthorised access is an offence under the Computer Misuse Act 1990.
+                                </div>
+                                <div className="bg-nhs-blue/20 border border-nhs-light/30 p-3 rounded-xl text-xs text-nhs-light/90 flex items-center">
+                                    <i className="fa-solid fa-flask mr-2 text-nhs-aqua"></i>
+                                    <span><strong>Academic Demo Mode:</strong> Enter any valid email address and any password (6+ characters) to access the demonstration environment.</span>
+                                </div>
+                                <div>
+                                    <label className="block text-white/60 font-semibold mb-1.5 text-xs" htmlFor="login-email">Staff Email / NHS SmartCard</label>
+                                    <div className="relative">
+                                        <i className="fa-solid fa-user absolute left-3 top-1/2 transform -translate-y-1/2 text-white/20"></i>
+                                        <input id="login-email" name="email" type="email" required placeholder="clinician@nhs.net" className="w-full glass p-3 pl-10 rounded-xl text-white text-sm outline-none focus:ring-1 focus:ring-nhs-aqua/50 placeholder-white/20" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-white/60 font-semibold mb-1.5 text-xs" htmlFor="login-password">Password</label>
+                                    <div className="relative">
+                                        <i className="fa-solid fa-lock absolute left-3 top-1/2 transform -translate-y-1/2 text-white/20"></i>
+                                        <input id="login-password" name="password" type="password" required minLength="6" placeholder="••••••••" className="w-full glass p-3 pl-10 rounded-xl text-white text-sm outline-none focus:ring-1 focus:ring-nhs-aqua/50 placeholder-white/20" />
+                                    </div>
+                                </div>
+                                {loginError && (
+                                    <div className="bg-rose-500/10 border border-rose-500/20 p-3 rounded-xl text-xs text-rose-300 flex items-center">
+                                        <i className="fa-solid fa-circle-exclamation mr-2"></i>{loginError}
+                                    </div>
+                                )}
+                                <button type="submit" className="w-full gradient-blue text-white font-bold py-3.5 rounded-xl shadow-lg hover:shadow-xl transition-all hover:scale-[1.01] flex justify-center items-center">
+                                    <i className="fa-solid fa-right-to-bracket mr-2"></i>Authenticate & Enter
+                                </button>
+                                <div className="text-center">
+                                    <p className="text-white/20 text-[10px]">HAAS | CN7000 MSc Dissertation | University of East London</p>
+                                    <p className="text-white/20 text-[10px] mt-0.5">© 2026 Urvi Bhatti — Supervised by Dr. Rasha Hafidh</p>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="flex h-screen text-white font-sans overflow-hidden">
+                    {/* Toast notification */}
+                    {toastMsg && (
+                        <div className={`fixed top-4 right-4 z-[100] px-5 py-3 rounded-xl shadow-2xl text-sm font-semibold animate-slide-in-right flex items-center ${toastMsg.type === 'error' ? 'bg-rose-500/90 text-white' : 'bg-emerald-500/90 text-white'}`}>
+                            <i className={`fa-solid ${toastMsg.type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check'} mr-2`}></i>
+                            {toastMsg.msg}
+                        </div>
+                    )}
+                    {/* ═══ SIDEBAR ═══ */}
+                    <div className="w-64 glass-sidebar flex flex-col z-20 shadow-2xl" role="navigation" aria-label="Main navigation">
+                        <div className="p-6 flex items-center tracking-tight border-b border-white/10">
+                            <div className="w-10 h-10 gradient-blue rounded-xl flex items-center justify-center mr-3 shadow-lg">
+                                <i className="fa-solid fa-hospital-user text-lg"></i>
+                            </div>
+                            <div>
+                                <div className="text-lg font-bold leading-none font-['Outfit']">HAAS</div>
+                                <div className="text-xs font-normal text-blue-200/70 mt-0.5">NHS England</div>
+                            </div>
+                        </div>
+                        <nav className="flex-1 mt-2 px-3 space-y-1">
+                            {[
+                                { id: 'dashboard', icon: 'fa-gauge-high', label: 'Command Centre' },
+                                { id: 'patients', icon: 'fa-user-group', label: 'Patient Registry' },
+                                { id: 'hospitals', icon: 'fa-building', label: 'Hospital Directory' },
+                                { id: 'map', icon: 'fa-map-location-dot', label: 'Resource Map' },
+                                { id: 'audit', icon: 'fa-clipboard-check', label: 'Audit Trail' },
+                            ].map(item => (
+                                <button key={item.id} onClick={() => setPage(item.id)}
+                                    className={`sidebar-btn w-full text-left py-3 px-4 rounded-xl text-sm font-medium flex items-center ${page === item.id ? 'active text-white' : 'text-white/60 hover:text-white'}`}>
+                                    <i className={`fa-solid ${item.icon} w-6 text-center mr-3 ${page === item.id ? 'text-nhs-light' : ''}`}></i>
+                                    {item.label}
+                                </button>
+                            ))}
+                        </nav>
+                        <div className="p-4 mx-3 mb-3 glass rounded-xl text-xs">
+                            <div className="flex items-center justify-between">
+                                <span className="text-white/50">System Status</span>
+                                <span className="text-emerald-400 font-bold flex items-center"><span className="w-2 h-2 bg-emerald-400 rounded-full mr-1.5 animate-pulse-soft"></span>LIVE</span>
+                            </div>
+                            <div className="text-white/30 mt-1">HAAS Engine • UEL</div>
+                        </div>
+                        <button onClick={handleLogout} className="mx-3 mb-3 px-4 py-2 glass rounded-xl text-xs text-white/40 hover:text-white/80 hover:bg-white/5 transition flex items-center">
+                            <i className="fa-solid fa-right-from-bracket mr-2"></i>Sign Out
+                        </button>
+                    </div>
+
+                    {/* ═══ MAIN CONTENT ═══ */}
+                    <div className="flex-1 flex flex-col overflow-hidden">
+                        {/* Top Bar */}
+                        <header className="glass h-16 flex items-center justify-between px-8 z-10 border-b border-white/5">
+                            <h2 className="text-lg font-bold text-white/90 tracking-tight font-['Outfit']">
+                                {pageTitle[page]}
+                            </h2>
+                            <div className="flex items-center space-x-4">
+                                <button onClick={() => setTutorialStep(tutorialStep === 0 ? 1 : 0)}
+                                    className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center transition-all ${tutorialStep > 0 ? 'bg-nhs-aqua/20 text-nhs-aqua border border-nhs-aqua/40 tutorial-highlight-pulse' : 'glass text-white/60 hover:text-white hover:bg-white/10'}`}
+                                    aria-label="Toggle Interactive Tutorial">
+                                    <i className="fa-solid fa-graduation-cap mr-1.5"></i>
+                                    {tutorialStep > 0 ? 'Tutorial Active' : 'Interactive Tutorial'}
+                                </button>
+                                <div className="flex flex-col text-right">
+                                    <span className="text-xs font-semibold text-white/80">Urvi Bhatti</span>
+                                    <span className="text-[10px] text-nhs-aqua font-medium">System Administrator</span>
+                                </div>
+                                <img src="https://ui-avatars.com/api/?name=Urvi+Bhatti&background=005EB8&color=fff&size=40&font-size=0.4" className="h-9 w-9 rounded-full ring-2 ring-white/10" />
+                            </div>
+                        </header>
+
+                        {/* Content Area */}
+                        <main className="flex-1 overflow-y-auto p-6">
+
+                            {/* ═══ DASHBOARD ═══ */}
+                            {page === 'dashboard' && stats && (
+                                <div className="space-y-6 animate-fade-in">
+                                    {/* Stats Grid */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                        {[
+                                            { label: 'Total Hospitals', value: stats.totalHospitals, icon: 'fa-building', gradient: 'gradient-blue', glow: 'stat-glow-blue', sub: 'Active network' },
+                                            { label: 'Child/Adolescent Units', value: stats.under16Facilities, icon: 'fa-child-reaching', gradient: 'gradient-indigo', glow: 'stat-glow-purple', sub: 'Specialist CAMHS' },
+                                            { label: 'Community Services', value: stats.communityServices, icon: 'fa-house-medical', gradient: 'gradient-emerald', glow: 'stat-glow-green', sub: `${stats.communityAvailable} with capacity` },
+                                            { label: 'Available Beds', value: stats.totalAvailableBeds, icon: 'fa-bed-pulse', gradient: 'gradient-blue', glow: 'stat-glow-cyan', sub: 'Across all regions' },
+                                        ].map((s, i) => (
+                                            <div key={i} className={`glass-card rounded-2xl p-5 ${s.glow}`} style={{animationDelay: `${i * 0.1}s`}}>
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <p className="text-xs font-medium text-white/50 mb-1">{s.label}</p>
+                                                        <h3 className="text-3xl font-black text-white">{s.value}</h3>
+                                                    </div>
+                                                    <div className={`h-10 w-10 ${s.gradient} rounded-xl flex items-center justify-center shadow-lg`}>
+                                                        <i className={`fa-solid ${s.icon} text-white text-sm`}></i>
+                                                    </div>
+                                                </div>
+                                                <div className="mt-3 text-xs text-white/40">
+                                                    <i className="fa-solid fa-circle-check text-emerald-400 mr-1"></i>{s.sub}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Charts + Tools Row */}
+                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                        {/* Bed Capacity Donut */}
+                                        <div className="glass-card rounded-2xl p-6 flex flex-col items-center">
+                                            <h3 className="font-bold text-white/80 text-sm w-full text-left mb-4 uppercase tracking-wider">National Bed Capacity</h3>
+                                            <div className="relative w-44 h-44">
+                                                <canvas ref={chartRef}></canvas>
+                                                <div className="absolute inset-0 flex items-center justify-center flex-col">
+                                                    <span className="text-2xl font-black text-white">{stats.totalHospitals > 0 ? Math.round((stats.totalAvailableBeds / (stats.avgBeds * stats.totalHospitals))*100) : 0}%</span>
+                                                    <span className="text-[10px] text-white/40 uppercase tracking-widest">Available</span>
+                                                </div>
+                                            </div>
+                                            <div className="mt-4 text-center text-xs text-white/30 glass rounded-lg p-3 w-full">
+                                                <i className="fa-solid fa-database mr-1 text-nhs-aqua"></i>
+                                                Live data synced: {stats.lastUpdated}
+                                            </div>
+                                        </div>
+
+                                        {/* AI Tools */}
+                                        <div className="glass-card rounded-2xl p-6 lg:col-span-2">
+                                            <h3 className="font-bold text-white/80 text-sm uppercase tracking-wider border-b border-white/10 pb-3 mb-5">
+                                                <i className="fa-solid fa-microchip text-nhs-aqua mr-2"></i>Clinical Decision Support
+                                            </h3>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                {/* Risk Predictor */}
+                                                <div className="glass-card rounded-xl p-5 flex flex-col h-full border-indigo-500/20">
+                                                    <div className="w-10 h-10 gradient-indigo rounded-xl flex items-center justify-center shadow-lg mb-4">
+                                                        <i className="fa-solid fa-chart-line text-white text-sm"></i>
+                                                    </div>
+                                                    <h4 className="text-sm font-bold text-white mb-1">Predictive Risk Scoring</h4>
+                                                    <p className="text-xs text-white/40 mb-5 flex-grow">Evaluate psychosocial factors to predict admission likelihood using a weighted additive model.</p>
+                                                    <button onClick={() => setShowRiskModal(true)} className="w-full gradient-indigo text-white text-sm font-semibold py-2.5 rounded-lg shadow-lg hover:shadow-xl transition-all hover:scale-[1.02]">
+                                                        Run Risk Analysis
+                                                    </button>
+                                                </div>
+                                                {/* Gatekeeper */}
+                                                <div className="glass-card rounded-xl p-5 flex flex-col h-full border-blue-500/20">
+                                                    <div className="w-10 h-10 gradient-blue rounded-xl flex items-center justify-center shadow-lg mb-4">
+                                                        <i className="fa-solid fa-shield-halved text-white text-sm"></i>
+                                                    </div>
+                                                    <h4 className="text-sm font-bold text-white mb-1">MCDA Gatekeeper</h4>
+                                                    <p className="text-xs text-white/40 mb-5 flex-grow">Trigger the Multi-Criteria Decision Analysis engine to enforce CETR-compliant care routing.</p>
+                                                    <button onClick={() => setShowGatekeeperModal(true)} className="w-full gradient-blue text-white text-sm font-semibold py-2.5 rounded-lg shadow-lg hover:shadow-xl transition-all hover:scale-[1.02]">
+                                                        Start Gatekeeper Review
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+
+                                </div>
+                            )}
+
+                            {/* ═══ HOSPITALS ═══ */}
+                            {page === 'hospitals' && (
+                                <div className="space-y-4 animate-fade-in h-full flex flex-col">
+                                    <div className="flex justify-between items-center">
+                                        <h3 className="text-white/50 text-sm">{hospitals.length} facilities connected to the HAAS framework.</h3>
+                                        <div className="relative">
+                                            <i className="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-white/30"></i>
+                                            <input type="text" placeholder="Search facilities..." aria-label="Search hospitals" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                                                className="pl-10 pr-4 py-2 glass rounded-xl text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-nhs-aqua/50 w-64" />
+                                        </div>
+                                    </div>
+                                    <div className="glass-card rounded-2xl overflow-hidden flex-1 overflow-x-auto overflow-y-auto">
+                                        {isLoading ? (
+                                            <div className="flex justify-center items-center h-64">
+                                                <div className="w-10 h-10 border-2 border-nhs-aqua/30 border-t-nhs-aqua rounded-full animate-spin"></div>
+                                            </div>
+                                        ) : (
+                                            <table className="premium-table w-full text-left text-sm" style={{minWidth: '800px'}}>
+                                                <thead className="border-b border-white/10 sticky top-0 z-10 glass">
+                                                    <tr>
+                                                        <th className="p-4 font-semibold text-white/60 text-xs uppercase tracking-wider">Hospital/Unit</th>
+                                                        <th className="p-4 font-semibold text-white/60 text-xs uppercase tracking-wider">Region</th>
+                                                        <th className="p-4 font-semibold text-white/60 text-xs uppercase tracking-wider">Beds</th>
+                                                        <th className="p-4 font-semibold text-white/60 text-xs uppercase tracking-wider">CQC</th>
+                                                        <th className="p-4 font-semibold text-white/60 text-xs uppercase tracking-wider">Specialisms</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-white/5">
+                                                    {hospitals.filter(h => {
+                                                        if (!searchQuery) return true;
+                                                        const q = searchQuery.toLowerCase();
+                                                        return h.name.toLowerCase().includes(q) || h.location.toLowerCase().includes(q) || h.cqc_rating.toLowerCase().includes(q);
+                                                    }).map((h, i) => (
+                                                        <tr key={i} className="hover:bg-white/[0.03] transition">
+                                                            <td className="p-4 font-medium text-white/90 text-sm">{h.name}</td>
+                                                            <td className="p-4 text-white/50 text-sm"><i className="fa-solid fa-location-dot text-white/20 mr-2"></i>{h.location}</td>
+                                                            <td className="p-4">
+                                                                <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${h.available_beds > 0 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
+                                                                    {h.available_beds} / {h.total_beds}
+                                                                </span>
+                                                            </td>
+                                                            <td className="p-4">
+                                                                <span className={`px-2 py-1 rounded-lg text-xs font-bold ${
+                                                                    h.cqc_rating === 'Outstanding' ? 'bg-purple-500/20 text-purple-400' :
+                                                                    h.cqc_rating === 'Good' ? 'bg-emerald-500/20 text-emerald-400' :
+                                                                    h.cqc_rating === 'Requires Improvement' ? 'bg-amber-500/20 text-amber-400' :
+                                                                    'bg-white/10 text-white/40'
+                                                                }`}>
+                                                                    {h.cqc_rating === 'Outstanding' && <i className="fa-solid fa-star mr-1"></i>}
+                                                                    {h.cqc_rating}
+                                                                </span>
+                                                            </td>
+                                                            <td className="p-4">
+                                                                <div className="flex space-x-1">
+                                                                    {h.autism_accredited === 1 && <span className="text-[10px] glass px-2 py-0.5 rounded text-nhs-aqua">ASD</span>}
+                                                                    {h.ld_specialist_ward === 1 && <span className="text-[10px] glass px-2 py-0.5 rounded text-purple-400">LD</span>}
+                                                                    {h.age_min <= 12 && <span className="text-[10px] glass px-2 py-0.5 rounded text-amber-400">CAMHS</span>}
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* ═══ MAP ═══ */}
+                            {page === 'map' && (
+                                <div className="h-full glass-card rounded-2xl overflow-hidden relative">
+                                    <div className="absolute top-4 right-4 z-[400] glass p-3 rounded-xl text-xs">
+                                        <h4 className="font-bold mb-2 text-white/80">Legend</h4>
+                                        <div className="flex items-center mb-1 text-white/60"><div className="w-3 h-3 rounded-full bg-nhs-blue mr-2"></div>Hospital</div>
+                                        <div className="flex items-center text-white/60"><div className="w-3 h-3 rounded-full bg-emerald-500 mr-2"></div>Community Service</div>
+                                    </div>
+                                    <div id="hospital-map" ref={mapRef}></div>
+                                </div>
+                            )}
+
+                            {/* ═══ AUDIT TRAIL ═══ */}
+                            {page === 'audit' && (
+                                <div className="space-y-4 animate-fade-in h-full flex flex-col">
+                                    <div className="flex justify-between items-center">
+                                        <div>
+                                            <h3 className="text-white/50 text-sm">Clinical decision accountability log.</h3>
+                                            <p className="text-white/30 text-xs mt-1">Every admission decision is permanently logged with full MCDA scoring and CETR reasoning.</p>
+                                        </div>
+                                        <div className="flex items-center space-x-3">
+                                            <span className="text-xs glass px-3 py-1.5 rounded-lg text-white/50">
+                                                <i className="fa-solid fa-shield-halved text-emerald-400 mr-1"></i>
+                                                {auditLog.length} decisions logged
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="glass-card rounded-2xl overflow-hidden flex-1 overflow-y-auto">
+                                        {isLoading ? (
+                                            <div className="flex justify-center items-center h-64">
+                                                <div className="w-10 h-10 border-2 border-nhs-aqua/30 border-t-nhs-aqua rounded-full animate-spin"></div>
+                                            </div>
+                                        ) : auditLog.length === 0 ? (
+                                            <div className="flex flex-col items-center justify-center h-64 text-white/30">
+                                                <i className="fa-solid fa-clipboard-check text-4xl mb-3 text-white/10"></i>
+                                                <p className="font-medium">No decisions logged yet.</p>
+                                                <p className="text-xs mt-1">Use the Gatekeeper tool to generate audit entries.</p>
+                                            </div>
+                                        ) : (
+                                            <table className="premium-table w-full text-left text-sm">
+                                                <thead className="border-b border-white/10 sticky top-0 z-10 glass">
+                                                    <tr>
+                                                        <th className="p-4 font-semibold text-white/60 text-xs uppercase tracking-wider">Timestamp</th>
+                                                        <th className="p-4 font-semibold text-white/60 text-xs uppercase tracking-wider">Patient</th>
+                                                        <th className="p-4 font-semibold text-white/60 text-xs uppercase tracking-wider">Decision</th>
+                                                        <th className="p-4 font-semibold text-white/60 text-xs uppercase tracking-wider">MCDA Score</th>
+                                                        <th className="p-4 font-semibold text-white/60 text-xs uppercase tracking-wider">Matched Facility</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-white/5">
+                                                    {auditLog.map((entry, i) => (
+                                                        <tr key={i} className="hover:bg-white/[0.03] transition animate-slide-up" style={{animationDelay: `${i * 0.05}s`}}>
+                                                            <td className="p-4 text-white/40 text-xs font-mono">{entry.timestamp}</td>
+                                                            <td className="p-4">
+                                                                <div className="text-white/70 text-xs">Age: {entry.patient_age}</div>
+                                                                <div className="text-white/40 text-[10px]">{entry.patient_hash?.substring(0, 8)}…</div>
+                                                            </td>
+                                                            <td className="p-4">
+                                                                <span className={`px-2 py-1 rounded-lg text-xs font-bold ${
+                                                                    entry.decision_type === 'ADMISSION_BLOCKED' ? 'bg-rose-500/20 text-rose-400' :
+                                                                    entry.decision_type === 'ADMISSION_APPROVED' ? 'bg-emerald-500/20 text-emerald-400' :
+                                                                    'bg-amber-500/20 text-amber-400'
+                                                                }`}>
+                                                                    {entry.decision_type?.replace(/_/g, ' ')}
+                                                                </span>
+                                                            </td>
+                                                            <td className="p-4 text-white/60 font-mono text-sm font-bold">{entry.mcda_suitability_score ?? '—'}</td>
+                                                            <td className="p-4 text-white/50 text-xs">{entry.matched_facility_name || '—'}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* ═══ PATIENT REGISTRY ═══ */}
+                            {page === 'patients' && (
+                                <div className="space-y-4 animate-fade-in h-full flex flex-col">
+                                    <div className="flex justify-between items-center">
+                                        <div>
+                                            <h3 className="text-white/50 text-sm">Pseudonymised patient demographic register.</h3>
+                                            <p className="text-white/30 text-xs mt-1">All identifiers are SHA-256 hashed for GDPR/UK Data Protection Act 2018 compliance. No personal data is stored.</p>
+                                        </div>
+                                        <span className="text-xs glass px-3 py-1.5 rounded-lg text-white/50">
+                                            <i className="fa-solid fa-user-group text-nhs-aqua mr-1"></i>
+                                            {patientRegistry.length} unique patients
+                                        </span>
+                                    </div>
+                                    <div className="glass-card rounded-2xl overflow-hidden flex-1 overflow-y-auto">
+                                        {isLoading ? (
+                                            <div className="flex justify-center items-center h-64">
+                                                <div className="w-10 h-10 border-2 border-nhs-aqua/30 border-t-nhs-aqua rounded-full animate-spin"></div>
+                                            </div>
+                                        ) : patientRegistry.length === 0 ? (
+                                            <div className="flex flex-col items-center justify-center h-64 text-white/30">
+                                                <i className="fa-solid fa-user-group text-4xl mb-3 text-white/10"></i>
+                                                <p className="font-medium">No patient records yet.</p>
+                                                <p className="text-xs mt-1">Use the Gatekeeper tool to generate patient assessments.</p>
+                                            </div>
+                                        ) : (
+                                            <table className="premium-table w-full text-left text-sm">
+                                                <thead className="border-b border-white/10 sticky top-0 z-10 glass">
+                                                    <tr>
+                                                        <th className="p-4 font-semibold text-white/60 text-xs uppercase tracking-wider">Patient Hash</th>
+                                                        <th className="p-4 font-semibold text-white/60 text-xs uppercase tracking-wider">Age</th>
+                                                        <th className="p-4 font-semibold text-white/60 text-xs uppercase tracking-wider">Primary Diagnosis</th>
+                                                        <th className="p-4 font-semibold text-white/60 text-xs uppercase tracking-wider">Last Decision</th>
+                                                        <th className="p-4 font-semibold text-white/60 text-xs uppercase tracking-wider">Matched Facility</th>
+                                                        <th className="p-4 font-semibold text-white/60 text-xs uppercase tracking-wider">Last Assessed</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-white/5">
+                                                    {patientRegistry.map((p, i) => (
+                                                        <tr key={i} className="hover:bg-white/[0.03] transition animate-slide-up" style={{animationDelay: `${i * 0.03}s`}}>
+                                                            <td className="p-4 font-mono text-nhs-aqua text-xs font-bold">
+                                                                <i className="fa-solid fa-fingerprint mr-1.5 text-white/20"></i>{p.hash}…
+                                                            </td>
+                                                            <td className="p-4 text-white/70 text-sm font-semibold">{p.age}</td>
+                                                            <td className="p-4">
+                                                                <span className="glass px-2.5 py-1 rounded-lg text-xs text-white/60 capitalize">{p.diagnosis?.replace(/_/g, ' ')}</span>
+                                                            </td>
+                                                            <td className="p-4">
+                                                                <span className={`px-2 py-1 rounded-lg text-xs font-bold ${
+                                                                    p.lastDecision === 'ADMISSION_BLOCKED' ? 'bg-rose-500/20 text-rose-400' :
+                                                                    p.lastDecision === 'ADMISSION_APPROVED' ? 'bg-emerald-500/20 text-emerald-400' :
+                                                                    'bg-amber-500/20 text-amber-400'
+                                                                }`}>
+                                                                    {p.lastDecision?.replace(/_/g, ' ')}
+                                                                </span>
+                                                            </td>
+                                                            <td className="p-4 text-white/50 text-xs">{p.facility}</td>
+                                                            <td className="p-4 text-white/40 text-xs font-mono">{p.lastTimestamp}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </main>
+                    </div>
+
+                    {/* ═══ GATEKEEPER MODAL ═══ */}
+                    {showGatekeeperModal && (
+                        <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in">
+                            <div className="glass rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col max-h-[90vh] border border-white/10 animate-slide-up">
+                                <div className="gradient-blue p-5 flex justify-between items-center">
+                                    <div>
+                                        <h2 className="text-lg font-bold flex items-center font-['Outfit']"><i className="fa-solid fa-shield-halved mr-3 opacity-70"></i>Admission Gatekeeper</h2>
+                                        <p className="text-blue-100/70 text-xs mt-0.5">Multi-Criteria Decision Analysis (MCDA) Engine</p>
+                                    </div>
+                                    <button onClick={() => { setShowGatekeeperModal(false); setGatekeeperResult(null); }} className="text-white/60 hover:text-white transition"><i className="fa-solid fa-xmark text-xl"></i></button>
+                                </div>
+
+                                <div className="p-5 overflow-y-auto">
+                                    {!gatekeeperResult ? (
+                                        <div className="space-y-4">
+                                            <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl text-xs text-amber-300/80">
+                                                <strong>CETR Policy:</strong> Under CETR guidelines, autistic individuals or those with learning disabilities should only be hospitalised when an active, treatable mental illness is present.
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-white/60 font-semibold mb-1.5 text-xs">Patient Age</label>
+                                                    <input type="number" className="w-full glass p-3 rounded-xl text-white text-sm outline-none focus:ring-1 focus:ring-nhs-aqua/50"
+                                                        value={patient.age} onChange={e => setPatient({ ...patient, age: e.target.value })} />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-white/60 font-semibold mb-1.5 text-xs">Primary Diagnosis</label>
+                                                    <select className="w-full glass p-3 rounded-xl text-white text-sm outline-none bg-transparent focus:ring-1 focus:ring-nhs-aqua/50"
+                                                        value={patient.diagnosis} onChange={e => setPatient({ ...patient, diagnosis: e.target.value })}>
+                                                        <option value="autism" className="bg-slate-800">Autism Spectrum Disorder</option>
+                                                        <option value="learning_disability" className="bg-slate-800">Learning Disability</option>
+                                                        <option value="depression" className="bg-slate-800">Clinical Depression</option>
+                                                        <option value="schizophrenia" className="bg-slate-800">Schizophrenia</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="block text-white/60 font-semibold mb-1.5 text-xs">Location Preference</label>
+                                                <div className="relative">
+                                                    <i className="fa-solid fa-location-dot absolute left-3 top-1/2 transform -translate-y-1/2 text-white/20"></i>
+                                                    <input type="text" className="w-full glass p-3 pl-10 rounded-xl text-white text-sm outline-none focus:ring-1 focus:ring-nhs-aqua/50"
+                                                        value={patient.location || ''} onChange={e => setPatient({ ...patient, location: e.target.value })} placeholder="e.g., London, Birmingham..." />
+                                                </div>
+                                            </div>
+                                            <div className="glass rounded-xl p-4 flex items-start cursor-pointer hover:bg-white/[0.06] transition"
+                                                onClick={() => setPatient({ ...patient, has_mental_illness: !patient.has_mental_illness })}>
+                                                <input type="checkbox" className="h-5 w-5 rounded mt-0.5 mr-3 accent-nhs-aqua cursor-pointer" aria-label="Active mental illness"
+                                                    checked={patient.has_mental_illness} readOnly />
+                                                <div>
+                                                    <label className="text-white/80 font-semibold text-sm cursor-pointer">Active Mental Illness Treatment Plan?</label>
+                                                    <p className="text-white/30 text-xs mt-1">Check if the patient presents with a severe psychiatric condition separate from their ASD/LD diagnosis.</p>
+                                                </div>
+                                            </div>
+                                            <div className="glass rounded-xl p-4 flex items-start cursor-pointer hover:bg-white/[0.06] transition"
+                                                onClick={() => setPatient({ ...patient, sensory_trigger: !patient.sensory_trigger })}>
+                                                <input type="checkbox" className="h-5 w-5 rounded mt-0.5 mr-3 accent-amber-400 cursor-pointer" aria-label="Sensory trigger suspected"
+                                                    checked={patient.sensory_trigger || false} readOnly />
+                                                <div>
+                                                    <label className="text-white/80 font-semibold text-sm cursor-pointer">Sensory / Environmental Trigger Suspected?</label>
+                                                    <p className="text-white/30 text-xs mt-1">If sensory overload, noise, lighting, or environmental distress may be contributing to the crisis presentation (Sensory Meltdown Flag).</p>
+                                                </div>
+                                            </div>
+                                            <button onClick={runGatekeeper} disabled={isSubmitting} className="w-full gradient-blue text-white font-bold py-3.5 rounded-xl shadow-lg hover:shadow-xl transition-all hover:scale-[1.01] flex justify-center items-center disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Execute MCDA Algorithm">
+                                                {isSubmitting ? (
+                                                    <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>Processing...</>
+                                                ) : (
+                                                    <><i className="fa-solid fa-gears mr-2"></i>Execute MCDA Algorithm</>
+                                                )}
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-4 animate-fade-in">
+                                            <div className={`p-4 rounded-xl border flex items-center ${gatekeeperResult.avoidanceAlert ? 'bg-rose-500/10 border-rose-500/30' : 'bg-emerald-500/10 border-emerald-500/30'}`}>
+                                                <div className={`text-3xl mr-4 ${gatekeeperResult.avoidanceAlert ? 'text-rose-400' : 'text-emerald-400'}`}>
+                                                    <i className={`fa-solid ${gatekeeperResult.avoidanceAlert ? 'fa-ban' : 'fa-circle-check'}`}></i>
+                                                </div>
+                                                <div>
+                                                    <h3 className={`font-black text-lg ${gatekeeperResult.avoidanceAlert ? 'text-rose-400' : 'text-emerald-400'}`}>
+                                                        {gatekeeperResult.avoidanceAlert ? 'ADMISSION BLOCKED BY CETR' : 'ADMISSION CONDITIONALLY APPROVED'}
+                                                    </h3>
+                                                    <p className="mt-0.5 text-xs text-white/60">{gatekeeperResult.recommendation}</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="glass rounded-xl p-4">
+                                                <h4 className="font-bold text-white/60 mb-2 text-xs uppercase tracking-wider">Decision Reasoning</h4>
+                                                <ul className="list-disc pl-5 space-y-1 text-xs text-white/70">
+                                                    {gatekeeperResult.reasons.length > 0 ? gatekeeperResult.reasons.map((r, i) => <li key={i}>{r}</li>) : <li>Standard criteria met.</li>}
+                                                </ul>
+                                            </div>
+
+                                            {gatekeeperResult.avoidanceAlert ? (
+                                                <div>
+                                                    <h4 className="font-bold text-white/80 mb-3 text-sm flex items-center"><i className="fa-solid fa-house-medical mr-2 text-emerald-400"></i>Community Services</h4>
+                                                    <div className="space-y-2">
+                                                        {gatekeeperResult.alternatives.map((alt, i) => (
+                                                            <div key={i} className="glass-card rounded-xl p-3 animate-slide-in-right" style={{animationDelay: `${i * 0.1}s`}}>
+                                                                <div className="flex justify-between items-start mb-1">
+                                                                    <strong className="text-white/90 text-sm">{alt.name}</strong>
+                                                                    <span className="bg-emerald-500/20 text-emerald-400 text-[10px] px-2 py-0.5 rounded-full font-bold">{alt.availability}</span>
+                                                                </div>
+                                                                <div className="text-xs text-white/40">{alt.type} • {alt.location}</div>
+                                                                <div className="text-[10px] text-white/30 mt-1 flex space-x-3">
+                                                                    <span><i className="fa-solid fa-phone mr-1"></i>{alt.contact}</span>
+                                                                    <span><i className="fa-solid fa-clock mr-1"></i>{alt.hours}</span>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                        {gatekeeperResult.alternatives.length === 0 && <div className="p-4 text-center text-white/30 text-xs italic">No exact community matches found. Escalate to regional coordinator.</div>}
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div>
+                                                    <h4 className="font-bold text-white/80 mb-3 text-sm flex items-center"><i className="fa-solid fa-building mr-2 text-nhs-aqua"></i>MCDA-Matched Hospitals</h4>
+                                                    <div className="space-y-2">
+                                                        {gatekeeperResult.suitableHospitals && gatekeeperResult.suitableHospitals.map((hosp, i) => (
+                                                            <div key={i} className="glass-card rounded-xl p-3 animate-slide-in-right" style={{animationDelay: `${i * 0.1}s`}}>
+                                                                <div className="flex justify-between items-start mb-1">
+                                                                    <strong className="text-white/90 text-sm">{hosp.name}</strong>
+                                                                    <span className="gradient-blue text-white text-[10px] px-2.5 py-0.5 rounded-full font-bold shadow">Score: {hosp.suitabilityScore}</span>
+                                                                </div>
+                                                                <div className="text-xs text-white/40 mb-2">{hosp.location} • {hosp.cqcRating} • {hosp.availableBeds} beds</div>
+                                                                <div className="flex flex-wrap gap-1">
+                                                                    {Object.entries(hosp.scoreBreakdown).map(([k, v], idx) => (
+                                                                        <span key={idx} className="glass text-[10px] px-2 py-0.5 rounded text-white/50">
+                                                                            {k}: <span className="text-nhs-aqua font-bold">{v}</span>
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                                {gatekeeperResult && (
+                                    <div className="glass border-t border-white/10 p-4 flex justify-between items-center">
+                                        <button onClick={downloadJustification} className="px-4 py-2 bg-emerald-500/10 text-emerald-400 font-bold rounded-xl border border-emerald-500/20 hover:bg-emerald-500/20 transition text-sm flex items-center">
+                                            <i className="fa-solid fa-file-pdf mr-2"></i>Download Clinical Justification
+                                        </button>
+                                        <div className="flex">
+                                            <button onClick={() => setGatekeeperResult(null)} className="px-4 py-2 glass text-white/60 font-semibold rounded-xl hover:text-white transition mr-3 text-sm">Start Over</button>
+                                            <button onClick={() => { setShowGatekeeperModal(false); setGatekeeperResult(null); }} className="px-4 py-2 gradient-blue text-white font-semibold rounded-xl shadow transition text-sm">Done</button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ═══ RISK PREDICTION MODAL ═══ */}
+                    {showRiskModal && (
+                        <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in">
+                            <div className="glass rounded-2xl shadow-2xl max-w-2xl w-full flex flex-col max-h-[90vh] border border-white/10 animate-slide-up">
+                                <div className="gradient-indigo p-5 flex justify-between items-center">
+                                    <div>
+                                        <h2 className="text-lg font-bold flex items-center font-['Outfit']"><i className="fa-solid fa-chart-line mr-3 opacity-70"></i>Predictive Risk Analysis</h2>
+                                        <p className="text-indigo-100/70 text-xs mt-0.5">Weighted Additive Risk Model</p>
+                                    </div>
+                                    <button onClick={() => { setShowRiskModal(false); setRiskResult(null); }} className="text-white/60 hover:text-white transition"><i className="fa-solid fa-xmark text-xl"></i></button>
+                                </div>
+
+                                <div className="p-5 overflow-y-auto">
+                                    {!riskResult ? (
+                                        <div className="space-y-4">
+                                            <p className="text-white/40 text-xs">Enter psychosocial factors to determine statistical risk of acute hospital admission.</p>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-white/60 font-semibold mb-1.5 text-xs">Patient Age</label>
+                                                    <input type="number" min="0" max="120" className="w-full glass p-3 rounded-xl text-white text-sm outline-none focus:ring-1 focus:ring-indigo-400/50"
+                                                        value={patient.age} onChange={e => setPatient({ ...patient, age: parseInt(e.target.value) || 0 })} />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-white/60 font-semibold mb-1.5 text-xs">Previous Mental Health Admissions</label>
+                                                    <input type="number" min="0" className="w-full glass p-3 rounded-xl text-white text-sm outline-none focus:ring-1 focus:ring-indigo-400/50"
+                                                        value={patient.previous_admissions} onChange={e => setPatient({ ...patient, previous_admissions: parseInt(e.target.value) || 0 })} />
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                {[
+                                                    { key: 'challenging_behaviour', label: 'Displays Challenging Behaviour' },
+                                                    { key: 'community_support', label: 'Active Community Support' },
+                                                    { key: 'family_coping', label: 'Family Able to Cope Safely' },
+                                                    { key: 'school_attendance', label: 'Attending School/Day Services' },
+                                                ].map(item => (
+                                                    <label key={item.key} className="flex items-center justify-between glass p-3 rounded-xl cursor-pointer hover:bg-white/[0.06] transition">
+                                                        <span className="text-white/70 text-xs font-semibold">{item.label}</span>
+                                                        <input type="checkbox" className="w-4 h-4 rounded accent-indigo-500"
+                                                            checked={patient[item.key]} onChange={e => setPatient({...patient, [item.key]: e.target.checked})} />
+                                                    </label>
+                                                ))}
+                                            </div>
+                                            <button onClick={runRiskCheck} disabled={isSubmitting} className="w-full gradient-indigo text-white font-bold py-3.5 rounded-xl shadow-lg hover:shadow-xl transition-all hover:scale-[1.01] flex justify-center items-center disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Calculate Risk Score">
+                                                {isSubmitting ? (
+                                                    <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>Processing...</>
+                                                ) : (
+                                                    <><i className="fa-solid fa-calculator mr-2"></i>Calculate Risk Score</>
+                                                )}
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-4 animate-fade-in">
+                                            <div className="flex flex-col items-center justify-center p-6 glass rounded-2xl">
+                                                <div className="text-white/40 font-bold uppercase tracking-widest text-[10px] mb-4">Calculated Risk Index</div>
+                                                <div className="relative w-36 h-36 flex items-center justify-center mb-3">
+                                                    <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                                                        <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="8" />
+                                                        <circle cx="50" cy="50" r="45" fill="none"
+                                                            stroke={riskResult.color === 'red' ? '#ef4444' : riskResult.color === 'orange' ? '#f97316' : riskResult.color === 'amber' ? '#fbbf24' : '#22c55e'}
+                                                            strokeWidth="8"
+                                                            strokeDasharray={`${(riskResult.riskScore / 100) * 283} 283`}
+                                                            strokeLinecap="round" />
+                                                    </svg>
+                                                    <div className="absolute text-4xl font-black text-white">{riskResult.riskScore}</div>
+                                                </div>
+                                                <h3 className={`text-xl font-black uppercase ${riskResult.color === 'red' ? 'text-rose-400' : riskResult.color === 'orange' ? 'text-orange-400' : riskResult.color === 'amber' ? 'text-amber-400' : 'text-emerald-400'}`}>
+                                                    {riskResult.riskLevel} RISK
+                                                </h3>
+                                                <p className="mt-2 text-center text-white/60 text-xs max-w-sm">{riskResult.recommendation}</p>
+                                            </div>
+
+                                            {riskResult.riskFactors.length > 0 && (
+                                                <div>
+                                                    <h4 className="font-bold text-white/60 text-xs uppercase mb-2 tracking-wider">Risk Multipliers</h4>
+                                                    <ul className="space-y-1.5">
+                                                        {riskResult.riskFactors.map((rf, i) => (
+                                                            <li key={i} className="flex items-center text-xs bg-rose-500/10 p-2.5 rounded-xl text-rose-300 font-medium animate-slide-in-right" style={{animationDelay: `${i * 0.1}s`}}>
+                                                                <i className="fa-solid fa-triangle-exclamation mr-2 text-rose-400"></i>{rf}
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                                {riskResult && (
+                                    <div className="glass border-t border-white/10 p-4 flex justify-end">
+                                        <button onClick={() => setRiskResult(null)} className="px-4 py-2 glass text-white/60 font-semibold rounded-xl hover:text-white transition mr-3 text-sm">Recalculate</button>
+                                        <button onClick={() => { setShowRiskModal(false); setRiskResult(null); }} className="px-4 py-2 gradient-indigo text-white font-semibold rounded-xl shadow transition text-sm">Complete</button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ═══ INTERACTIVE TUTORIAL PANEL ═══ */}
+                    <div className={`tutorial-panel fixed top-0 right-0 h-full w-96 z-[60] flex flex-col ${tutorialStep > 0 ? 'open' : 'closed'}`}>
+                        <div className="gradient-blue p-5 flex justify-between items-center">
+                            <div>
+                                <h2 className="text-base font-bold flex items-center font-['Outfit']">
+                                    <i className="fa-solid fa-graduation-cap mr-2 opacity-70"></i>Interactive Tutorial
+                                </h2>
+                                <p className="text-blue-100/60 text-[10px] mt-0.5">Step {tutorialStep || 1} of {tutorialSteps.length}</p>
+                            </div>
+                            <button onClick={() => setTutorialStep(0)} className="text-white/60 hover:text-white transition" aria-label="Close tutorial">
+                                <i className="fa-solid fa-xmark text-lg"></i>
+                            </button>
+                        </div>
+                        {/* Step Indicators */}
+                        <div className="flex items-center justify-center gap-2 p-3 border-b border-white/10">
+                            {tutorialSteps.map((_, idx) => (
+                                <button key={idx} onClick={() => setTutorialStep(idx + 1)}
+                                    className={`tutorial-step-indicator ${tutorialStep === idx + 1 ? 'active' : tutorialStep > idx + 1 ? 'completed' : 'pending'}`}
+                                    aria-label={`Go to step ${idx + 1}`}>
+                                    {tutorialStep > idx + 1 ? <i className="fa-solid fa-check text-[10px]"></i> : idx + 1}
+                                </button>
+                            ))}
+                        </div>
+                        {/* Step Content */}
+                        {tutorialStep > 0 && tutorialStep <= tutorialSteps.length && (
+                            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+                                <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${tutorialSteps[tutorialStep - 1].color} flex items-center justify-center shadow-lg mb-2`}>
+                                    <i className={`fa-solid ${tutorialSteps[tutorialStep - 1].icon} text-white text-lg`}></i>
+                                </div>
+                                <h3 className="text-lg font-bold text-white font-['Outfit']">{tutorialSteps[tutorialStep - 1].title}</h3>
+                                <p className="text-sm text-white/70 leading-relaxed">{tutorialSteps[tutorialStep - 1].content}</p>
+                                <div className="glass rounded-xl p-4 text-xs text-white/60 leading-relaxed whitespace-pre-line">
+                                    {tutorialSteps[tutorialStep - 1].detail}
+                                </div>
+                                <div className="bg-nhs-aqua/10 border border-nhs-aqua/30 rounded-xl p-3 text-xs text-nhs-aqua flex items-start">
+                                    <i className="fa-solid fa-arrow-right mr-2 mt-0.5"></i>
+                                    <span>{tutorialSteps[tutorialStep - 1].action}</span>
+                                </div>
+                            </div>
+                        )}
+                        {/* Navigation */}
+                        <div className="p-4 border-t border-white/10 flex justify-between items-center">
+                            <button onClick={() => setTutorialStep(Math.max(1, tutorialStep - 1))} disabled={tutorialStep <= 1}
+                                className="px-4 py-2 glass rounded-xl text-xs font-semibold text-white/50 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition">
+                                <i className="fa-solid fa-arrow-left mr-1"></i>Back
+                            </button>
+                            <span className="text-[10px] text-white/30">{tutorialStep}/{tutorialSteps.length}</span>
+                            {tutorialStep < tutorialSteps.length ? (
+                                <button onClick={() => setTutorialStep(tutorialStep + 1)}
+                                    className="px-4 py-2 gradient-blue rounded-xl text-xs font-bold text-white shadow hover:shadow-lg transition-all hover:scale-[1.02]">
+                                    Next<i className="fa-solid fa-arrow-right ml-1"></i>
+                                </button>
+                            ) : (
+                                <button onClick={() => setTutorialStep(0)}
+                                    className="px-4 py-2 gradient-emerald rounded-xl text-xs font-bold text-white shadow hover:shadow-lg transition-all hover:scale-[1.02]">
+                                    <i className="fa-solid fa-circle-check mr-1"></i>Complete
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    {% endraw %}
+    </script>
+</body>
+</html>

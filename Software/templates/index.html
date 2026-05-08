@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hospital Admission Avoidance System</title>
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        function App() {
+            const [page, setPage] = useState('dashboard');
+            const [patient, setPatient] = useState({ age: '', diagnosis: '', has_mental_illness: false });
+            const [result, setResult] = useState(null);
+            const [hospitals, setHospitals] = useState([]);
+
+            useEffect(() => {
+                fetch('/api/hospitals')
+                    .then(res => res.json())
+                    .then(data => setHospitals(data.slice(0, 10))); // Show first 10 for demo
+            }, []);
+
+            const checkAdmission = async () => {
+                const response = await fetch('/api/check_admission', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(patient)
+                });
+                const data = await response.json();
+                setResult(data);
+            };
+
+            return (
+                <div className="min-h-screen">
+                    <nav className="bg-blue-800 text-white p-4 shadow-md">
+                        <div className="container mx-auto flex justify-between items-center">
+                            <h1 className="text-xl font-bold">NHS Admission Avoidance System (England)</h1>
+                            <div>
+                                <button onClick={() => setPage('dashboard')} className={`mr-4 ${page === 'dashboard' ? 'font-bold underline' : ''}`}>Dashboard</button>
+                                <button onClick={() => setPage('hospitals')} className={`${page === 'hospitals' ? 'font-bold underline' : ''}`}>Hospital Database</button>
+                            </div>
+                        </div>
+                    </nav>
+
+                    <div className="container mx-auto p-6">
+                        {page === 'dashboard' ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Gatekeeper Form */}
+                                <div className="bg-white p-6 rounded-lg shadow-lg">
+                                    <h2 className="text-xl font-bold mb-4 text-blue-900 border-b pb-2">Patient Gatekeeper</h2>
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-gray-700">Patient Age</label>
+                                            <input 
+                                                type="number" 
+                                                className="w-full border p-2 rounded" 
+                                                value={patient.age} 
+                                                onChange={e => setPatient({...patient, age: e.target.value})} 
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-gray-700">Primary Diagnosis</label>
+                                            <select 
+                                                className="w-full border p-2 rounded" 
+                                                value={patient.diagnosis} 
+                                                onChange={e => setPatient({...patient, diagnosis: e.target.value})}
+                                            >
+                                                <option value="">Select Diagnosis...</option>
+                                                <option value="autism">Autism Spectrum Disorder</option>
+                                                <option value="learning_disability">Learning Disability</option>
+                                                <option value="depression">Depression</option>
+                                                <option value="anxiety">Anxiety</option>
+                                            </select>
+                                        </div>
+                                        <div className="flex items-center">
+                                            <input 
+                                                type="checkbox" 
+                                                className="mr-2" 
+                                                checked={patient.has_mental_illness} 
+                                                onChange={e => setPatient({...patient, has_mental_illness: e.target.checked})} 
+                                            />
+                                            <label className="text-gray-700">Has Treatable Mental Illness?</label>
+                                        </div>
+                                        <button 
+                                            onClick={checkAdmission}
+                                            className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
+                                        >
+                                            Check Admission Eligibility
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Results Panel */}
+                                <div>
+                                    {result && (
+                                        <div className={`p-6 rounded-lg shadow-lg ${result.avoidance_alert ? 'bg-red-50 border-l-4 border-red-500' : 'bg-green-50 border-l-4 border-green-500'}`}>
+                                            <h2 className="text-xl font-bold mb-2">{result.avoidance_alert ? '⛔ ADMISSION BLOCKED' : '✅ ADMISSION POSSIBLE'}</h2>
+                                            <p className="text-lg font-semibold">{result.recommendation}</p>
+                                            {result.reason && result.reason.length > 0 && (
+                                                <div className="mt-4 p-3 bg-white rounded border">
+                                                    <p className="font-bold text-red-600">Reason:</p>
+                                                    <ul className="list-disc pl-5">
+                                                        {result.reason.map((r, i) => <li key={i}>{r}</li>)}
+                                                    </ul>
+                                                </div>
+                                            )}
+                                            {result.avoidance_alert && (
+                                                <div className="mt-4">
+                                                    <h3 className="font-bold">Suggested Community Alternatives:</h3>
+                                                    <ul className="list-disc pl-5 text-blue-800">
+                                                        {result.alternatives.map((a, i) => <li key={i}>{a}</li>)}
+                                                    </ul>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                    {!result && (
+                                        <div className="bg-gray-50 p-6 rounded-lg border border-dashed border-gray-300 text-center text-gray-500">
+                                            Run a check to see admission results.
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="bg-white p-6 rounded-lg shadow-lg">
+                                <h2 className="text-xl font-bold mb-4">Hospital Database (Sample View)</h2>
+                                <table className="w-full border-collapse">
+                                    <thead>
+                                        <tr className="bg-gray-200">
+                                            <th className="border p-2 text-left">Hospital Name</th>
+                                            <th className="border p-2 text-left">Location</th>
+                                            <th className="border p-2 text-left">Beds</th>
+                                            <th className="border p-2 text-left">Age Range</th>
+                                            <th className="border p-2 text-left">CQC Rating</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {hospitals.map(h => (
+                                            <tr key={h.id} className="border-b hover:bg-gray-50">
+                                                <td className="border p-2">{h.name}</td>
+                                                <td className="border p-2">{h.location}</td>
+                                                <td className="border p-2">{h.total_beds}</td>
+                                                <td className="border p-2">{h.age_min}-{h.age_max}</td>
+                                                <td className="border p-2">
+                                                    <span className={`px-2 py-1 rounded text-xs text-white ${
+                                                        h.cqc_rating === 'Outstanding' ? 'bg-green-600' : 
+                                                        h.cqc_rating === 'Good' ? 'bg-green-500' : 
+                                                        h.cqc_rating === 'Inadequate' ? 'bg-red-600' : 'bg-yellow-500'
+                                                    }`}>
+                                                        {h.cqc_rating}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
